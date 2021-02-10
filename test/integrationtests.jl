@@ -1,5 +1,6 @@
 using DataFrames, CSV
 using CategoricalArrays
+using Random
 
 @testset "MLJ Integration Classification" begin
     # ============== Problem setup ============ #
@@ -62,6 +63,32 @@ end
 
     ŷ = MLJ.predict(mach, rows=test)
     result = round(MLJ.rms(ŷ, y[test]), sigdigits=4)
+    @show result
+
+    # Test for correctness
+    @test isreal(result)
+end
+
+@testset "MLJ Integration Fixed Size Regressor" begin
+    n = 500
+    m = 10
+    X, y = MLJ.make_regression(n, 2; noise=0.5, rng=18)
+    df = DataFrame(X)
+    df.y = y
+    dfnew = coerce(df, autotype(df))
+
+    y, X = unpack(dfnew, ==(:y), colname -> true)
+    train, test = partition(eachindex(y), 0.7, shuffle=true, rng=20)
+
+    # Define a good set of hyperparameters for this problem
+    stand1 = Standardizer()
+    X = MLJ.transform(MLJ.fit!(MLJ.machine(stand1, X)), X)
+    model = FixedSizeRegressor(γ=6.0, σ=4500, subsample=m)
+    mach = MLJ.machine(model, X, y)
+    MLJ.fit!(mach, rows=train, verbosity=0)
+    ŷ = MLJ.predict(mach, rows=test)
+    result = round(MLJ.rms(ŷ, y[test]), sigdigits=4)
+    @show result
 
     # Test for correctness
     @test isreal(result)

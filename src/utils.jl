@@ -73,11 +73,38 @@ function _build_kernel_matrix(x, y; kwargs...)
     return kern_mat
 end
 
+function _choose_kernel(; kwargs...)
+    # Extract the matrix for the keyword arguments
+    kernel = kwargs[:kernel]
+
+    if kernel == :rbf
+        # Create the kernel with the corresponding scale
+        t = ScaleTransform(_revert(kwargs[:sigma]))
+        κ = transform(SqExponentialKernel(), t)
+    elseif kernel == :linear
+        κ = LinearKernel()
+    elseif kernel == :poly
+        # Create the kernel with the corresponding degree
+        κ = PolynomialKernel(; degree=kwargs[:degree], c=0.0)
+    end
+
+    return κ
+end
+
 """
     Takes a Support Vector Machine type and converts some of its attributes to a
 dictionary that makes it easier to handle as keyword arguments.
 """
-_kwargs2dict(svm) = Dict(:kernel => svm.kernel, :sigma => svm.σ, :degree => svm.degree)
+_kwargs2dict(svm::Union{LSSVC,LSSVR}) =
+    Dict(:kernel => svm.kernel, :sigma => svm.σ, :degree => svm.degree)
+
+_kwargs2dict(svm::FixedSizeSVR) = Dict(
+    :kernel => svm.kernel,
+    :sigma => svm.σ,
+    :degree => svm.degree,
+    :subsample => svm.subsample,
+    :iters => svm.iters
+)
 
 """
     Function to find all the instances in an array `y` that are
@@ -101,7 +128,9 @@ Essentially, this is a voting scheme for the multiclass classification problem.
 In the case of a tie, the smallest index is always chosen, i.e. 1. This is not the best
 strategy, but it is after the following paper:
 
-Chih-Wei Hsu and Chih-Jen Lin (2002) ‘A comparison of methods for multiclass support vector machines’, IEEE Transactions on Neural Networks, 13(2), pp. 416. doi: 10.1109/72.991427.
+Chih-Wei Hsu and Chih-Jen Lin (2002) ‘A comparison of methods for multiclass support
+vector machines’, IEEE Transactions on Neural Networks, 13(2), pp. 416.
+doi: 10.1109/72.991427.
 
 Where it says the following quote:
 

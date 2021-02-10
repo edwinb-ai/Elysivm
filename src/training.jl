@@ -67,7 +67,7 @@ function svmpredict(svm::LSSVC, fits, xnew::AbstractMatrix)
     kern_mat = _build_kernel_matrix(x, xnew; kwargs...)
     # Compute the decision function
     result = prod_reduction(kern_mat, y, α) .+ b
-    result = reshape(result, size(result, 2)) # Remove the trailing dimension
+    result = dropdims(result; dims=2) # Squeeze singleton dimension
 
     return sign.(result)
 end
@@ -202,7 +202,7 @@ function svmpredict(svm::LSSVR, fits, xnew::AbstractMatrix)
     result = prod_reduction(kern_mat, α) .+ b
 
     # We need to remove the trailing dimension
-    result = reshape(result, size(result, 2))
+    result = dropdims(result; dims=2)
 
     return result
 end
